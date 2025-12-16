@@ -1,0 +1,100 @@
+NAME: ''
+OUTPUT_DIR: './output/DCMI/tiny/ResNet18/BaseHalf/task10/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (3, 64, 64)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/home/likunchi/reuse-model/tiny-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/tiny-base0-task20-base_latest_model.pth"
+task1_MODEL: "/home/likunchi/reuse-model/tiny-resnet18-baseHalf-task1_base_latest_model.pth"
+use_base_half: True
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: True
+train_first_task: False
+seed: 0
+trainer_name: "DualConsistencyMI"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Local_Datasets_Split"
+  dataset_name: "tiny_imagenet"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_json_file: '/data0/user/kcli/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+#  data_root: "/data0/user/kcli/Datasets/tiny-imagenet-200"
+  data_json_file: '/home/likunchi/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+  data_root: "/home/likunchi/Datasets/tiny-imagenet-200"
+  all_classes: 200
+  all_tasks: 10
+  split_seed: 0
+  val_length: 0
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+  TYPE: 'resnet18'
+  rate: 1.
+  output_feature_dim: 512
+
+
+#----- model -----
+model:
+  kd_gamma: 10.
+  TRAIN:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 250
+#    MAX_EPOCH: 100
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+
+#      TYPE: "ADAM"
+#      BASE_LR: 0.001
+
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+#      TYPE: "cosineannealing"
+      LR_STEP: [ 75, 125, 175, 225 ]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+generator:
+  gen_model_name: "dual_consist_TINYIMNET_GEN"
+  generator_lr: 5e-4
+  generator_iters: 10000
+  batch_size: 128
+  ParaLambda: 0.5
+
+  dis_model_name: "dual_consist_TINYIMNET_DIS"
+  critic_iters: 5
+  discriminator_lr: 5e-4
+  weight_cliping_limit: 0.01
+
+#_C.generator = CN()
+#_C.generator.gen_model_name = "dual_consist_CIFAR_GEN"
+#_C.generator.generator_lr = 5e-4
+#_C.generator.generator_iters = 10000
+#_C.generator.batch_size = 64
+#
+#_C.generator.dis_model_name = "dual_consist_CIFAR_DIS"
+#_C.generator.weight_cliping_limit = 0.01
+#_C.generator.critic_iters = 5
+#_C.generator.discriminator_lr = 5e-4
+
+

@@ -1,0 +1,76 @@
+
+NAME: ''
+OUTPUT_DIR: './output/FeTrIL/imagenet100/ResNet18/Base0/task10/seed-100000/test2'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (3, 224, 224)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+task1_MODEL: "/home/likunchi/reuse-model/imagent100-base0-task10-base_latest_model.pth"
+use_base_half: False
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: False
+approach: "FeTrIL"
+train_first_task: False
+seed: 100000
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Local_Datasets_Split_Per_Class"
+  dataset_name: "imagenet"                    #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn imagenet
+#  data_json_file: '/data0/user/kcli/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+#  data_root: "/data0/user/kcli/Datasets/tiny-imagenet-200"
+  data_json_file: '/home/likunchi/Datasets/imagenet/podnet_imagenet100_forCL.json'
+  data_root: "/home/likunchi/Datasets/ImageNet/"
+  all_classes: 100
+  all_tasks: 10
+  split_seed: 0
+  val_length: 0
+
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_file: ""
+  resumed_model_path: ""
+  resumed_bias_layer_path: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+  TYPE: 'resnet18'
+  rate: 1.
+  output_feature_dim: 512
+
+# ----- classifier BUILDER -----
+classifier:
+  bias: True
+#  classifier_type: "CosineLinear"
+  classifier_type: "linear"
+  #LOSS_TYPE: "CrossEntropy"
+  LOSS_TYPE: "CrossEntropy"
+#  LOSS_TYPE: "bsce"
+
+#----- model -----
+model:
+  use_svm: False
+  eeil_finetune_train:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 60
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+#      LR_STEP: [10, 10, 10, 10]
+      LR_STEP: [15, 25, 35, 45]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+

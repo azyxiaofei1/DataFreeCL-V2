@@ -1,0 +1,110 @@
+
+NAME: ''
+#OUTPUT_DIR: './output/zeroShotKD/DeepInvert_KD/cifar10/ResNet32/Base0/task1/seed-0/test2'
+OUTPUT_DIR: './output/zeroShotKD/GAN_KD/cifar10/ResNet32/Base0/task1/seed-0/test15'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL/output/ABD/cifar10/ResNet32/Base0/task1/seed-0/test1/models/base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/cifar10-task1-base_latest_model_1.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/cifar10-task1-base_latest_model_2.pth"
+task1_MODEL: "output/ABD-forZeroShotKD/cifar10/ResNet32/Base0/task1/seed-0/test1/models/base_latest_model.pth"
+#student_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/output/zeroShotKD/cifar10/ResNet32/Base0/task1/seed-0/no-kd/test2/models/student_latest_model.pth"
+save_model: True
+use_Contra_train_transform: False
+seed: 0
+#trainer_name: "DeepInvert_KD"
+#trainer_name: "cGAN_KD"
+trainer_name: "GAN_KD"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR10"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/likunchi/Datasets"
+  all_classes: 10
+  all_tasks: 1
+  split_seed: 0
+  val_length: 0
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 64
+#  output_feature_dim: 512
+
+
+#----- model -----
+student:
+  use_cls: True
+  use_kd: True
+  temp: 2.
+  TRAIN:
+    BATCH_SIZE: 128
+#    MAX_EPOCH: 340
+    MAX_EPOCH: 170
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER:
+#      TYPE: 'multistep'
+      TYPE: 'warmup'
+#      LR_STEP: [120, 200, 260, 300]
+      LR_STEP: [60, 100, 130, 150]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+generator:
+#  gen_model_name: "CIFAR_GEN"
+  generator_iter: 10000
+  batch_size: 128
+  deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr, r_feature_weight, pr_scale, content_temp 1e-3 5e1 1e-3 1e3
+
+  gen_model_name: "CIFAR_GAN"
+#  gen_model_name: "CIFAR_GAN_conv"
+  latent_size: 64
+  generator_epochs: 50
+  generator_lr: 0.0002
+  TRAIN:
+    BATCH_SIZE: 64
+    NUM_WORKERS: 4
+
+discriminator:
+  dis_model_name: "CIFAR_DIS"
+#  dis_model_name: "CIFAR_DIS_conv"
+  discriminator_lr: 0.0002
+
+#
+#
+#_C.generator = CN()
+#_C.generator.gen_model_name = "CIFAR_GEN"
+#_C.generator.generator_iter = 5000
+#_C.generator.batch_size = 128
+#_C.generator.deep_inv_params = [0.1, 1., 1., 1.]
+#
+#_C.generator.generator_epochs = 100
+#_C.generator.generator_lr = 0.001
+#
+#_C.generator.TRAIN = CN()
+#_C.generator.TRAIN.BATCH_SIZE = 64
+#_C.generator.TRAIN.NUM_WORKERS = 4
+#
+#_C.discriminator = CN()
+#_C.discriminator.dis_model_name = "CIFAR_DIS"
+#_C.discriminator.discriminator_lr = 0.001
+
+
+

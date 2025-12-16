@@ -1,0 +1,142 @@
+
+NAME: ''
+OUTPUT_DIR: './output/SSIL/tiny/ResNet18/Base0/task10/seed-10/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (64, 64)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet32/Base0/task5/test1/models/base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet32/Base0/task10/test1/models/base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet18/Base0/task20/test1/models/base_latest_model.pth"
+task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/seed10-tiny-task10-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/seed100-tiny-task10-base_latest_model.pth"
+pretrained_MODEL: ""
+use_base_half: False
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: True
+train_first_task: False
+
+seed: 10
+trainer_name: "PCDFCL"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Local_Datasets_Split"
+  dataset_name: "tiny_imagenet"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_json_file: '/data0/user/kcli/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+#  data_root: "/data0/user/kcli/Datasets/tiny-imagenet-200"
+  data_json_file: '/home/likunchi/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+  data_root: "/home/likunchi/Datasets/tiny-imagenet-200"
+  all_classes: 200
+  all_tasks: 10
+  split_seed: 10
+  val_length: 0
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+  TYPE: 'resnet18'
+  rate: 1.
+  output_feature_dim: 512
+
+generator:
+  gen_model_name: "TINYIMNET_GEN"
+  generator_iter: 10000
+  batch_size: 128
+  deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr, r_feature_weight, pr_scale, content_temp 1e-3 5e1 1e-3 1e3
+
+#----- model -----
+model:
+  loss_type: "calibration"
+#  loss_type: "NoFCC-calibration"
+  #  loss_type: "com-calibration"
+  use_post_LAKD: True
+  gamma: 0.1
+
+  use_localCE: False
+  use_localKD: False
+
+  use_finetune: False
+  use_feature_norm: True
+  use_finetune_FCC: True
+
+  kd_lambda: 1.
+  use_FCCKD: False
+
+  TRAIN:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 200
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+      LR_STEP: [ 50, 90, 130, 170 ]
+      #      LR_STEP: [80, 120]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+#----- new_model -----
+new_model:
+#  loss_type: "CFIL"
+  loss_type: "SSIL"
+#  loss_type: "R-DFCIL"
+#  loss_type: "ABD"
+#  loss_type: "BSCE"
+#  loss_type: "LwF"
+  T: 2.
+  kd_lambda: 1.
+  ce_lambda: 0.5
+  hkd_lambda: 0.15
+  rkd_lambda: 0.5
+
+  TRAIN:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 250
+    #MAX_EPOCH: 160
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      #TYPE: "CosineAnnealing"
+      TYPE: 'warmup'
+      LR_STEP: [ 75, 125, 175, 225 ]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+  finetune:
+    MAX_EPOCH: 100
+    BATCH_SIZE: 128
+    SHUFFLE: True
+    NUM_WORKERS: 4
+    # ----- OPTIMIZER -----
+    BASE_LR: 0.005
+    TYPE: "SGD"
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 1e-4
+    # ----- LR_SCHEDULER -----
+    LR_TYPE: "multistep"
+    LR_STEP: [ 60, 80 ]
+    LR_FACTOR: 0.1
+    WARM_EPOCH: 5

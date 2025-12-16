@@ -1,0 +1,71 @@
+
+NAME: ''
+OUTPUT_DIR: './output/FeCAM/cifar10/ResNet32/Base0/task5/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (3, 32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/cifar10/ResNet32/Base0/task5/test2/models/base_latest_model.pth"
+use_base_half: False
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: False
+approach: "FeCAM"
+train_first_task: False
+seed: 0
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR10"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+  data_root: "/data0/user/kcli/Datasets"
+  all_classes: 10
+  all_tasks: 5
+  split_seed: 0
+  val_length: 0
+
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_file: ""
+  resumed_model_path: ""
+  resumed_bias_layer_path: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 64
+
+# ----- classifier BUILDER -----
+classifier:
+  bias: True
+#  classifier_type: "CosineLinear"
+  classifier_type: "linear"
+  #LOSS_TYPE: "CrossEntropy"
+  LOSS_TYPE: "CrossEntropy"
+#  LOSS_TYPE: "bsce"
+
+#----- model -----
+model:
+  EPSILON: 1e-8
+  shrink: True
+  norm_cov: True
+  alpha1: 1.
+  alpha2: 1.
+  beta: 0.5
+  eeil_finetune_train:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 50
+    NUM_WORKERS: 4
+    SHUFFLE: True
+
+
+

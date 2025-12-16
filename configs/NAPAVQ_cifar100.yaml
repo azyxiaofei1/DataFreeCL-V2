@@ -1,0 +1,101 @@
+
+NAME: ''
+#OUTPUT_DIR: './output/NAPA-VQ/cifar100/ResNet18/BaseHalf/task10/test8'
+OUTPUT_DIR: './output/NAPA-VQ/cifar100/ResNet32/BaseHalf/task10/test5'
+#OUTPUT_DIR: './output/NAPA-VQ/cifar100/ResNet32/Base0/task20/test7'
+#OUTPUT_DIR: './output/NAPA-VQ/cifar100/ResNet18/Base0/task20/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output/NAPA-VQ/cifar100/ResNet18/BaseHalf/task10/test1/models/base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task20-base_latest_model.pth"
+task1_navq: "/data0/user/kcli/CL_research/DataFreeCL-V2/output/NAPA-VQ/cifar100/ResNet18/BaseHalf/task10/test1/models/base_latest_navq.pth"
+use_base_half: True
+checkpoints: ''
+save_model: True
+use_Contra_train_transform: False
+train_first_task: True
+seed: 0
+approach: "NAPA-VQ"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR100"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+  data_root: "/data0/user/kcli/Datasets"
+  all_classes: 100
+  all_tasks: 10
+  split_seed: 0
+  val_length: 0
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  TYPE: "res32_cifar"
+  rate: 1.
+#  output_feature_dim: 512
+  output_feature_dim: 64
+
+#----- model -----
+model:
+  protoAug_weight: 10.
+  kd_weight: 10.
+  temp: 0.5
+  TRAIN:
+    BATCH_SIZE: 128
+#    MAX_EPOCH: 250
+    MAX_EPOCH: 150
+    NUM_WORKERS: 4
+    SHUFFLE: True
+#    OPTIMIZER:
+##      TYPE: 'SGD'
+#      TYPE: 'ADAM'
+#      BASE_LR: 0.1
+#      MOMENTUM: 0.9
+#      WEIGHT_DECAY: 1e-4
+#    LR_SCHEDULER:
+#      TYPE: 'warmup'
+#      #      LR_STEP: [100, 150, 200, 250]
+#      LR_STEP: [ 45, 90, 125, 150, 170, 190 ]
+#      LR_FACTOR: 0.1
+#      WARM_EPOCH: 5
+    OPTIMIZER:
+      TYPE: 'ADAM'
+      BASE_LR: 0.001
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER:
+      TYPE: 'step'
+      step_size: 45
+      LR_FACTOR: 0.1
+  navq:
+    TRAIN:
+      OPTIMIZER:
+        TYPE: 'SGD'
+        BASE_LR: 5.
+        MOMENTUM: 0.9
+        WEIGHT_DECAY: 2e-4
+      LR_SCHEDULER:
+        TYPE: 'step'
+        step_size: 20
+        LR_FACTOR: 0.1
+
+
+
+

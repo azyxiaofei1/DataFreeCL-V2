@@ -1,0 +1,81 @@
+
+NAME: ''
+OUTPUT_DIR: './output/FeTrIL/cifar10/ResNet32/Base0/task5/seed-10/test2'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (3, 32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task20-base_latest_model.pth"
+task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/output/ERA-RDFCL/cifar10/ResNet32/Base0/task5/seed-10/test1/models/base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/output/ERA-RDFCL/cifar10/ResNet32/Base0/task5/seed-100/test1/models/base_latest_model.pth"
+use_base_half: False
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: False
+approach: "FeTrIL"
+train_first_task: False
+seed: 10
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR10"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/likunchi/Datasets"
+  all_classes: 10
+  all_tasks: 5
+  split_seed: 100
+  val_length: 0
+
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_file: ""
+  resumed_model_path: ""
+  resumed_bias_layer_path: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 64
+
+# ----- classifier BUILDER -----
+classifier:
+  bias: True
+#  classifier_type: "CosineLinear"
+  classifier_type: "linear"
+  #LOSS_TYPE: "CrossEntropy"
+  LOSS_TYPE: "CrossEntropy"
+#  LOSS_TYPE: "bsce"
+
+#----- model -----
+model:
+  use_svm: False
+  eeil_finetune_train:
+    BATCH_SIZE: 128
+    MAX_EPOCH: 50
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+      LR_STEP: [10, 20, 30, 40]
+#      LR_STEP: [10, 10, 10, 10]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+

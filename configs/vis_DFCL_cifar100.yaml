@@ -1,0 +1,75 @@
+
+NAME: ''
+
+OUTPUT_DIR: './output/ERA-EFCL/visualize/foster-EFCL/cifar10/ResNet32/task2/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task20-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/output/ERA-RDFCL/cifar100-4-vis/ResNet32/Base0/task2/test1/models/base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/seed10-cifar100-task10-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/seed100-cifar100-task10-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL/output/FOSTER-DFCL/cifar100-4-vis/ResNet32/Base0/task2/0.95-0.97/test1/models/base_latest_model.pth"
+#fctm_model_path: "/home/likunchi/CL_research/DataFreeCL/output/FOSTER-DFCL/cifar100-4-vis/ResNet32/Base0/task2/0.95-0.97/test1/models/latest_FCTM.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL/output/ERA-RDFCL/cifar100-4-vis/ResNet32/Base0/task2/test1/models/base_latest_model.pth"
+#fctm_model_path: "/home/likunchi/CL_research/DataFreeCL/output/ERA-RDFCL/cifar100-4-vis/ResNet32/Base0/task2/test1/models/latest_FCTM.pth"
+#task1_MODEL: "/home/likunchi/CL_research/DataFreeCL-V2/output/CKDF_ERA/cifar100-4-vis/ResNet32/Base0/test1/models/base_latest_model.pth"
+#fctm_model_path: "/home/likunchi/CL_research/DataFreeCL-V2/output/CKDF_ERA/cifar100-4-vis/ResNet32/Base0/test1/models/CKDF_task2_latest_FCN.pth"
+
+seed: 0
+
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR100"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/likunchi/Datasets"
+  all_classes: 100
+  all_tasks: 50
+  split_seed: 0
+  val_length: 0
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 64
+
+#----- model -----
+model:
+  TRAIN:
+    BATCH_SIZE: 128
+#    MAX_EPOCH: 250
+    MAX_EPOCH: 170
+    NUM_WORKERS: 4
+    SHUFFLE: True
+
+
+#----- FCTM -----
+FCTM:
+  use_FCN: False
+  FCN:
+    in_feature_dim: 64
+    out_feature_dim: 64
+    layer_nums: 3
+    hidden_layer_rate: 2
+    last_hidden_layer_use_relu: True
+  TRAIN:
+    tradeoff_rate: 1.
+    BATCH_SIZE: 128
+    MAX_EPOCH: 170
+    #MAX_EPOCH: 160
+    NUM_WORKERS: 1
+    SHUFFLE: True
+
+
+

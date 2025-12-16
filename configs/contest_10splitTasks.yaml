@@ -1,0 +1,99 @@
+
+NAME: ''
+OUTPUT_DIR: './contest_output/EARS_DFCL/10split/ResNet50/Base0/task10/model-ABD-ReKD/debug-test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (224, 224)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+seed: 0
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset_name: "get_10splitTasks"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+  data_root: "/share/home/lxguo/Code/data/10splitTasks"
+  all_classes: 10
+  all_tasks: 1
+  classes_per_task: 10
+
+
+# ----- extractor BUILDER -----
+extractor:
+  TYPE: 'resnet50'
+  rate: 1.
+  output_feature_dim: 2048
+
+generator:
+  gen_model_name: "IMNET_GEN"
+  generator_iter: 10
+  batch_size: 128
+  deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr, r_feature_weight, pr_scale, content_temp 1e-3 5e1 1e-3 1e3
+
+#----- model -----
+model:
+  T: 2.
+  kd_lambda: 1.
+  fkd_lambda: 1e-1
+  use_featureKD: False
+  KD_type: "ReKD"
+  cls_type: "softTarget"
+  TRAIN:
+    BATCH_SIZE: 32
+    MAX_EPOCH: 5
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'multistep'
+      LR_STEP: [40, 70, 95, 115]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+#----- FCTM -----
+FCTM:
+  T: 2.
+  ce_lambda: 1.
+  kd_lambda: 1e-1
+  addCls_lambda: 1e-1
+  hkd_lambda: 0.15
+
+# rkd:
+  rkd_lambda: 0.5
+
+#  all_cls_LOSS_TYPE: "bsce"
+  all_cls_LOSS_TYPE: "CE"
+  #all_cls_LOSS_TYPE: "LACE"
+  add_cls_LOSS_TYPE: "CE"
+#  add_cls_LOSS_TYPE: "bsce"
+  use_FCN: True
+  FCN:
+    in_feature_dim: 4096
+    out_feature_dim: 2048
+    layer_nums: 3
+    hidden_layer_rate: 2
+    last_hidden_layer_use_relu: True
+  TRAIN:
+    BATCH_SIZE: 32
+    MAX_EPOCH: 5
+    #MAX_EPOCH: 160
+    NUM_WORKERS: 1
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      #TYPE: "CosineAnnealing"
+      TYPE: 'multistep'
+      LR_STEP: [40, 70, 95, 115]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+
+

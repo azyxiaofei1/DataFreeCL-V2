@@ -1,0 +1,162 @@
+#实验名字 & 输出控制
+NAME: ''#通常是实验名
+OUTPUT_DIR: './output/COMARF_DFCL/validate/cifar100/ResNet32/Base0/task5/w-o-rstm-LAKD/test1'#所有log、结果、模型的输出目录
+SHOW_STEP: 50 #训练中每过多少 iter 打印一次 loss / acc。
+SAVE_STEP: 100 #每多少 iter 保存一次模型（如果代码里用这个字段的话）。
+VALID_STEP: 25 # 每多少 iter 做一次验证。
+INPUT_SIZE: (32, 32) # 输入图像大小，这里是 CIFAR 的 (32, 32)。
+COLOR_SPACE: 'RGB'#表明图片是彩色三通道。
+CPU_MODE: False #是否只用 CPU。你一般不改它。
+use_best_model: False #训练结束 eval 阶段是用：True：用验证集上最好的那一版模型；False：用最后一个 epoch 的模型。
+
+
+#预训练/旧模型相关
+#后续 DFCL/COMARF 会把它当作 teacher，在后续 task 中做 distillation 或 feature 对齐。
+
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task20-base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/cifar100-basehalf-task5-base_latest_model.pth"
+task1_MODEL: ""#/home/likunchi/reuse-model/cifar100-base0-task5-base_latest_model.pth
+pretrained_MODEL: "" #如果你有一个大规模预训练好的模型（比如 ImageNet 上的 ResNet），可以在这里指定。
+use_base_half: False #看名字像是：base 阶段只训练一半类别的开关（某些方法有“base half / base full”的对比实验）。具体逻辑要去 trainer 里看 use_base_half 怎么用。
+checkpoints: '' #如果你想从某个 checkpoint 接着训（而不是从头），这里会填路径。
+save_model: True #是否在训练过程中保存模型（有些 validate 脚本只想跑个结果，不存模型）。   ##从False改成True！！！！！
+use_Contra_train_transform: False #是否使用对比学习风格的数据增强（SimCLR 那种 heavy augmentation）
+train_first_task: True #有的脚本只做“后续 task 的 DFCL 对比”，不重新训练 base task。False 表示不重新训练 task1，而是完全依赖你上面 task1_MODEL 加载的 teacher。##从False改成True！！！！！
+
+seed: 0 #随机种子
+trainer_name: "progressive_DFCL"#训练器名字，这里是 DFCL 的 progressive 版本。
+# ----- DATASET BUILDER -----
+#DATASET 配置
+DATASET:
+  dataset: "Torchvision_Datasets_Split" #这是你在 lib/dataset 里的某个类名（对应前面 main 里的 eval(cfg.DATASET.dataset)）。内部会用 dataset_name 决定具体加载哪个 torchvision 数据集。
+  dataset_name: "CIFAR100"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/liudanze/project/eccv/Datasets"#你机器上数据集目录。再次是一个需要改的字段（除非你恰好路径一样）。
+  all_classes: 100 #CIFAR-100 一共 100 类。
+  all_tasks: 5 #整个增量过程分成 5 个 task。大概率是每个 task 20 类（100 / 5），但是否均匀要看 dataset 类实现。
+  split_seed: 0 #划分类到各个 task 时用的随机种子。改它可以得到不同的类划分方案（不同的实验 split）。
+  val_length: 0 #验证集长度，0 可能表示“不单独划验证集，用 test 评估”。
+
+  #继续训练
+# ----- resume -----
+RESUME:
+  use_resume: False #是否从某次中断的训练继续。
+  resumed_model_path: "" #如果上面是 True，那么这里指定 ckpt 路径。
+#额外预训练
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: "" #use_pretrained_model=True + MODEL="xxx.pth" 就会先 load 这个再开始 CL。
+
+#特征提取 backbone
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar" #选用的 backbone，针对 CIFAR 的 ResNet-32 变体。
+  rate: 1. #有些方法里会用 rate 去缩小通道数、减少网络宽度。1表示用原始宽度
+  output_feature_dim: 64 #提取出来的特征维度（通常是最后一层 before classifier 的维度）
+
+#数据生成/Deep Inversion (这些会在“生成伪样本”那部分代码里用到。)
+generator:
+  gen_model_name: "CIFAR_GEN" #生成器网络类型，针对 CIFAR 的生成器。
+  generator_iter: 10000 #每次生成阶段的迭代次数。
+  batch_size: 512 #生成时的 batch size。
+  deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr生成器学习率（1e-3）, r_feature_weight特征正则项的权重（50）, pr_scale和图片先验相关的权重（1e-3）, content_temp 1e-3 5e1 1e-3 1e3 内容温度（1000），控制 soft 目标 / 能量。
+
+
+#旧模型 / 教师侧设置
+#----- model -----
+
+model:
+  T: 2.  #distillation 里的 temperature，softmax 会除以 T。
+  tau: 3.  #另一个温度参数（有些方法双温度）。
+  cls_type: "LwF"  #LwF：Learning without Forgetting，那种输出蒸馏 + CE 的方法。
+#  cls_type: "BSCE-class"
+#  cls_type: "null"
+#  KD_type: "LAKD-class"
+#  KD_type: "vanillaKD"
+  KD_type: "null" #知识蒸馏类型现在选的是 null，说明不启用额外 KD 分支（或者用其他 block 负责 KD）
+#  KD_type: "RTKD"
+#  KD_type: "BKD"
+#  KD_type: "TKD"
+#  KD_type: "null"
+  kd_lambda: 1.  #KD loss 的权重。
+
+# feature KD
+  fkd_lambda: 0.2  #feature KD（特征蒸馏）的 loss 权重。
+  use_featureKD: True  #开关：是否启用特征蒸馏（和 logits 蒸馏相对）。
+
+
+  #曲率正则！！！！！！！！！！！！！！！！！！
+
+  CR_LAMBDA: 0.01   # 曲率正则
+
+  #曲率正则！！！！！！！！！！！！！！！！！！
+
+#旧模型训练的通用设置
+  TRAIN:
+    BATCH_SIZE: 512
+    MAX_EPOCH: 170
+    NUM_WORKERS: 32
+    SHUFFLE: True #打乱数据集
+    OPTIMIZER:  #优化器设置
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER: #学习率衰减设置
+      TYPE: 'warmup'
+      LR_STEP: [60, 100, 130, 150]  #在第 [60, 100, 130, 150] 个 epoch 时，每次乘 0.1
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5  #WARM_EPOCH: 5：前 5 个 epoch 做学习率 warmup。热身
+
+  finetune:   # 微调阶段设置
+    MAX_EPOCH: 60  # 最大训练轮数
+    BATCH_SIZE: 512  # 批大小
+    SHUFFLE: True
+    NUM_WORKERS: 32  # 多线程加载数据
+    # ----- OPTIMIZER -----
+    BASE_LR: 0.005  # 学习率
+    TYPE: "SGD"
+    MOMENTUM: 0.9  # 动量
+    WEIGHT_DECAY: 2e-4  # 权重衰减
+    # ----- LR_SCHEDULER -----
+    LR_TYPE: "multistep"  # 学习率衰减策略
+    LR_STEP: [ 30, 50 ] # 学习率衰减步长
+    LR_FACTOR: 0.1  # 学习率衰减因子
+    WARM_EPOCH: 5  # 热身轮数
+
+
+
+
+#新模型 / COMARF 损失设置
+#----- new_model -----
+new_model:
+  loss_type: "ABD"  #用ABD loss
+#  loss_type: "BSCE"
+#  loss_type: "LwF"
+#  loss_type: "cls"
+  T: 2.  #蒸馏温度
+  kd_lambda: 1. #KD loss 的权重。
+
+
+
+#和旧模型一样的训练设置
+  TRAIN:
+    BATCH_SIZE: 512
+    MAX_EPOCH: 170
+    NUM_WORKERS: 32
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+      LR_STEP: [60, 100, 130, 150]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5

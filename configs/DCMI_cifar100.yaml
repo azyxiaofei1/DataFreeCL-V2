@@ -1,0 +1,110 @@
+
+NAME: ''
+OUTPUT_DIR: './output/DCMI/cifar100/ResNet32/BaseHalf/task5/test2'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task10-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-base0-task20-base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/QuintCDKD/reuse-model/cifar100-resnet32-baseHalf-task1_base_latest_model.pth"
+#task1_MODEL: "/home/likunchi/reuse-model/cifar100-base0-task5-base_latest_model.pth"
+task1_MODEL: "/home/likunchi/reuse-model/cifar100-resnet32-baseHalf-task1_base_latest_model.pth"
+use_base_half: True
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: False
+train_first_task: False
+seed: 0
+trainer_name: "DualConsistencyMI"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR100"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/likunchi/Datasets"
+  all_classes: 100
+  all_tasks: 10
+  split_seed: 0
+  val_length: 0
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 64
+#  output_feature_dim: 512
+
+
+#----- model -----
+model:
+  kd_lambda: 1e-1
+  kd_gamma: 10.
+  TRAIN:
+    BATCH_SIZE: 128
+#    MAX_EPOCH: 340
+    MAX_EPOCH: 170
+#    MAX_EPOCH: 100
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+
+#      TYPE: "ADAM"
+#      BASE_LR: 0.001
+
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER:
+#      TYPE: 'multistep'
+      TYPE: 'warmup'
+#      TYPE: "cosineannealing"
+
+#      LR_STEP: [120, 200, 260, 300]
+      LR_STEP: [60, 100, 130, 150]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+generator:
+  gen_model_name: "dual_consist_CIFAR_GEN"
+  generator_lr: 5e-4
+  generator_iters: 10000
+  batch_size: 128
+  ParaLambda: 0.5
+
+  dis_model_name: "dual_consist_CIFAR_DIS"
+  critic_iters: 5
+  discriminator_lr: 5e-4
+  weight_cliping_limit: 0.01
+
+#_C.generator = CN()
+#_C.generator.gen_model_name = "dual_consist_CIFAR_GEN"
+#_C.generator.generator_lr = 5e-4
+#_C.generator.generator_iters = 10000
+#_C.generator.batch_size = 64
+#
+#_C.generator.dis_model_name = "dual_consist_CIFAR_DIS"
+#_C.generator.weight_cliping_limit = 0.01
+#_C.generator.critic_iters = 5
+#_C.generator.discriminator_lr = 5e-4
+
+

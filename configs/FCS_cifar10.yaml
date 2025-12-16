@@ -1,0 +1,90 @@
+
+NAME: ''
+OUTPUT_DIR: './output/FCS/cifar10/ResNet32/Base0/task5/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (32, 32)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+task1_MODEL: ""
+pretrained_MODEL: ""
+use_base_half: False
+checkpoints: ''
+save_model: True
+use_Contra_train_transform: False
+train_first_task: True
+seed: 0
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Torchvision_Datasets_Split"
+  dataset_name: "CIFAR10"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+#  data_root: "/data0/user/kcli/Datasets"
+  data_root: "/home/likunchi/Datasets"
+  all_classes: 10
+  all_tasks: 5
+  split_seed: 0
+  val_length: 0
+
+# ----- exemplar_manager -----
+exemplar_manager:
+  store_original_imgs: True
+  memory_budget: 0
+  mng_approach: "herding"      #herding, random, kmeans
+  norm_exemplars: True
+  centroid_order: "herding"   #herding, distance, None
+  fixed_exemplar_num: -1
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+#  TYPE: "resnet32"
+  TYPE: "resnet18_cbam"
+
+
+#----- model -----
+model:
+
+  temp: 0.1
+
+  contrast:
+    lambda_contrast: 0.1
+    contrast_T: 0.07
+
+  transfer:
+    lambda_transfer: 1.
+
+  fkd:
+    lambda_fkd: 10.
+
+  proto:
+    lambda_proto: 10.
+
+  TRAIN:
+    BATCH_SIZE: 64
+    MAX_EPOCH: 101
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.001
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 2e-4
+    LR_SCHEDULER:
+      LR_STEP: 45
+      LR_FACTOR: 0.1
+
+
+

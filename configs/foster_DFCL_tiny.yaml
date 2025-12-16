@@ -1,0 +1,115 @@
+
+NAME: ''
+OUTPUT_DIR: './output/foster_DFCL/tiny/ResNet18/Base0/task20/test1'
+SHOW_STEP: 50
+SAVE_STEP: 100
+VALID_STEP: 25
+INPUT_SIZE: (64, 64)
+COLOR_SPACE: 'RGB'
+CPU_MODE: False
+use_best_model: False
+#task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet32/Base0/task5/test1/models/base_latest_model.pth"
+#task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet32/Base0/task10/test1/models/base_latest_model.pth"
+task1_MODEL: "/data0/user/kcli/CL_research/DataFreeCL-V2/output-1/ABD/tiny/ResNet18/Base0/task20/test1/models/base_latest_model.pth"
+pretrained_MODEL: ""
+use_base_half: False
+checkpoints: ''
+save_model: False
+use_Contra_train_transform: True
+train_first_task: False
+
+seed: 0
+trainer_name: "foster_DFCL"
+# ----- DATASET BUILDER -----
+
+DATASET:
+  dataset: "Local_Datasets_Split"
+  dataset_name: "tiny_imagenet"                  #mnist, mnist28, CIFAR10, CIFAR100, imagenet, svhn
+  data_json_file: '/data0/user/kcli/Datasets/tiny-imagenet-200/tiny_imagenet_200_dataset_train_val.json'
+  data_root: "/data0/user/kcli/Datasets/tiny-imagenet-200"
+  all_classes: 200
+  all_tasks: 20
+  split_seed: 0
+  val_length: 0
+# ----- resume -----
+
+RESUME:
+  use_resume: False
+  resumed_model_path: ""
+
+# ----- pre-train setting -----
+PRETRAINED:
+  use_pretrained_model: False
+  MODEL: ""
+
+
+# ----- extractor BUILDER -----
+extractor:
+  TYPE: 'resnet18'
+  #TYPE: "resnet34"
+#  TYPE: "res32_cifar"
+  rate: 1.
+  output_feature_dim: 512
+
+generator:
+  gen_model_name: "TINYIMNET_GEN"
+  generator_iter: 10000
+  batch_size: 256
+  deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr, r_feature_weight, pr_scale, content_temp 1e-3 5e1 1e-3 1e3
+
+#----- model -----
+model:
+  T: 2.
+  beta: 0.96
+
+  TRAIN:
+    BATCH_SIZE: 256
+    MAX_EPOCH: 250
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      TYPE: 'warmup'
+      LR_STEP: [75, 125, 175, 225]
+#      LR_STEP: [80, 120]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+
+#----- FCTM -----
+FCTM:
+  T: 2.
+  beta: 0.96
+
+  use_FCN: False
+  FCN:
+    in_feature_dim: 1024
+    out_feature_dim: 1024
+    layer_nums: 3
+    hidden_layer_rate: 2
+    last_hidden_layer_use_relu: True
+  TRAIN:
+    tradeoff_rate: 1.
+    BATCH_SIZE: 256
+    MAX_EPOCH: 250
+    #MAX_EPOCH: 160
+    NUM_WORKERS: 4
+    SHUFFLE: True
+    OPTIMIZER:
+      TYPE: 'SGD'
+      BASE_LR: 0.1
+      MOMENTUM: 0.9
+      WEIGHT_DECAY: 1e-4
+    LR_SCHEDULER:
+      #TYPE: "CosineAnnealing"
+      TYPE: 'warmup'
+      LR_STEP: [75, 125, 175, 225]
+      LR_FACTOR: 0.1
+      WARM_EPOCH: 5
+
+
+
