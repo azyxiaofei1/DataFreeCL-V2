@@ -136,7 +136,9 @@ def update_config(cfg, args):
     cfg.defrost() #yacs 的 CfgNode 默认可能是“冻结”的（不允许随便加改字段，为的是防止误拼字段名）。defrost()：解除冻结 → 可以改。
     cfg.merge_from_file(args.cfg) #args.cfg 就是你在命令行里给的 --cfg 参数，比如：
     #打开这个 YAML；按 YAML 里的层级，把 _C 里对应字段覆盖掉。
+    cfg.set_new_allowed(True)
     cfg.merge_from_list(args.opts)#args.opts 是命令行里 YAML 外面“多余的所有参数”，例如：
+    cfg.set_new_allowed(False)
     """
     那么：
         python main.py --cfg xxx.yaml DATASET.all_tasks 5 extractor.TYPE res32_cifar

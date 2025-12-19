@@ -7,9 +7,18 @@ from torch.nn import functional as Func
 import numpy as np
 
 from .deepInversionGenBN import DeepInversionGenBN
-from lib.model import CrossEntropy, compute_distill_loss, BalancedSoftmax, compute_BSCEKD_loss
+from lib.model import (
+    BalancedSoftmax,
+    CrossEntropy,
+    combine_loss,
+    compute_BSCEKD_loss,
+    compute_distill_loss,
+    curvature_balanced_loss,
+    log_tau_epoch_weight,
+)
 from lib.model.distill_relation import RKDAngleLoss
 from lib.utils import AverageMeter, get_classifier_weight_bias
+from lib.utils.feature_pool import FeaturePool
 
 '''Code for progressive_DFCL'''
 
@@ -28,6 +37,14 @@ class progressive_DFCL(DeepInversionGenBN):
 
         # >>> 新增：曲率正则的权重，从 cfg 里读（你可以在 YAML 里加一个 CR_lambda）
         self.cr_lambda = getattr(self.cfg.model, "CR_LAMBDA", 0.0)
+        self.cr_mode = getattr(self.cfg.model, "CR_MODE", "proxy")
+        self.cr_tau = getattr(self.cfg.model, "CR_TAU", 2.0)
+        self.cr_warmup_epoch = getattr(self.cfg.model, "CR_WARMUP_EPOCH", 0)
+        self.cr_pool_size = getattr(self.cfg.model, "CR_POOL_SIZE", 0)
+        self.cr_interval = getattr(self.cfg.model, "CR_INTERVAL", 10)
+        self.cr_pool_sample_max = getattr(self.cfg.model, "CR_POOL_SAMPLE_MAX", 2048)
+        self.cr_k_neighbors = getattr(self.cfg.model, "CR_K_NEIGHBORS", 12)
+        self.cr_num_samples_per_class = getattr(self.cfg.model, "CR_NUM_SAMPLES_PER_CLASS", 32)
         # <<<
 
     def curvature_regularization(self, features, labels, num_samples_per_class=32, k_neighbors=16):
@@ -108,6 +125,119 @@ class progressive_DFCL(DeepInversionGenBN):
         # 所有类的平均“曲率”
         curv_loss = torch.stack(all_class_curv).mean()
         return curv_loss
+
+    def curvature_proxy_per_class(self, features, labels, num_samples_per_class=32, k_neighbors=16):
+        """
+        Return per-class curvature proxy Gi, shape [K]. K is number of valid classes.
+        features: [N, D], labels: [N]
+        """
+        device = features.device
+        labels = labels.view(-1)
+
+        unique_classes = labels.unique()
+        all_class_curv = []
+
+        for c in unique_classes:
+            idx = (labels == c).nonzero(as_tuple=False).view(-1)
+            Nc_total = idx.numel()
+            if Nc_total < (k_neighbors + 1):
+                continue
+
+            perm = torch.randperm(Nc_total, device=device)
+            idx = idx[perm[:min(num_samples_per_class, Nc_total)]]
+            feats_c = features[idx]  # [Nc, D]
+            Nc = feats_c.size(0)
+            if Nc < (k_neighbors + 1):
+                continue
+
+            with torch.no_grad():
+                dist2 = torch.cdist(feats_c, feats_c, p=2.0)  # [Nc, Nc]
+
+            curv_list = []
+            for i in range(Nc):
+                d_i = dist2[i]
+                k_use = min(max(k_neighbors + 1, 4), Nc)
+                nn_idx = torch.topk(d_i, k_use, largest=False).indices[1:]  # 去掉自己
+                if nn_idx.numel() < 2:
+                    continue
+
+                nbr = feats_c[nn_idx]     # [k, D]
+                center = feats_c[i:i+1]   # [1, D]
+
+                diff = nbr - center       # [k, D]
+                diff_T = diff.t()         # [D, k]
+                U, S, Vh = torch.linalg.svd(diff_T, full_matrices=False)
+
+                d_tan = min(2, max(1, U.size(1) - 1))
+                U_norm = U[:, d_tan:]     # [D, D-d_tan]
+                if U_norm.numel() == 0:
+                    curv_i = torch.zeros((), device=device, dtype=features.dtype)
+                else:
+                    diff_norm = U_norm @ (U_norm.t() @ diff_T)  # [D, k]
+                    curv_i = (diff_norm ** 2).sum() / (diff_norm.numel() + 1e-8)
+                curv_list.append(curv_i)
+
+            if len(curv_list) > 0:
+                all_class_curv.append(torch.stack(curv_list).mean())
+
+        if len(all_class_curv) == 0:
+            return torch.empty(0, device=device)
+
+        return torch.stack(all_class_curv)
+
+    @staticmethod
+    def curvature_proxy_per_class_grad(features, labels, num_samples_per_class=32, k_neighbors=16):
+        device = features.device
+        labels = labels.view(-1)
+        unique_classes = labels.unique()
+        all_class_curv = []
+        for c in unique_classes:
+            idx = (labels == c).nonzero(as_tuple=False).view(-1)
+            Nc_total = idx.numel()
+            if Nc_total < (k_neighbors + 1):
+                continue
+            perm = torch.randperm(Nc_total, device=device)
+            idx = idx[perm[:min(num_samples_per_class, Nc_total)]]
+            feats_c = features[idx]
+            Nc = feats_c.size(0)
+            if Nc < (k_neighbors + 1):
+                continue
+
+            with torch.no_grad():
+                dist2 = torch.cdist(feats_c, feats_c, p=2.0)
+
+            curv_list = []
+            for i in range(Nc):
+                d_i = dist2[i]
+                k_use = min(max(k_neighbors + 1, 4), Nc)
+                nn_idx = torch.topk(d_i, k_use, largest=False).indices[1:]
+                if nn_idx.numel() < 2:
+                    continue
+
+                nbr = feats_c[nn_idx]
+                center = feats_c[i:i+1]
+                diff = nbr - center
+                diff_T = diff.t()
+
+                with torch.no_grad():
+                    U, S, Vh = torch.linalg.svd(diff_T.detach(), full_matrices=False)
+                    d_tan = min(2, max(1, U.size(1) - 1))
+                    U_norm = U[:, d_tan:]
+
+                if U_norm.numel() == 0:
+                    curv_i = torch.zeros((), device=device, dtype=features.dtype)
+                else:
+                    diff_norm = U_norm @ (U_norm.t() @ diff_T)
+                    curv_i = (diff_norm ** 2).mean()
+
+                curv_list.append(curv_i)
+
+            if len(curv_list) > 0:
+                all_class_curv.append(torch.stack(curv_list).mean())
+
+        if len(all_class_curv) == 0:
+            return torch.empty(0, device=device, dtype=features.dtype)
+        return torch.stack(all_class_curv)
 
 
     def ft_criterion(self, logits, targets, data_weights):
@@ -375,6 +505,11 @@ class progressive_DFCL(DeepInversionGenBN):
         feat_bsce_criterion = BalancedSoftmax(sample_per_class=global_classifier_weights_norm).to(self.device)
         feat_bias_bsce_criterion = BalancedSoftmax(sample_per_class=global_classifier_paras_norm).to(self.device)
 
+        pool = None
+        if self.cr_mode == "balanced":
+            pool_size = int(self.cr_pool_size) if int(self.cr_pool_size) > 0 else 10 * self.cfg.model.TRAIN.BATCH_SIZE
+            pool = FeaturePool(max_samples=pool_size, store_device="cpu")
+
         for epoch in range(1, self.cfg.model.TRAIN.MAX_EPOCH + 1):
             all_loss = AverageMeter()
             if float(torch.__version__[:3]) < 1.3:
@@ -504,16 +639,61 @@ class progressive_DFCL(DeepInversionGenBN):
 
                 # ……前面 loss_kd / loss_cls 都算好之后……
 
-                # === 曲率正则 CR 部分（静态版） ===
+                # === 曲率正则 CR 部分（静态版/平衡版） ===
+                L_original = loss_cls + loss_kd
                 curv_loss = torch.tensor(0.0, device=self.device)
-                if getattr(self, "cr_lambda", 0.0) > 0:
-                    # all_features: self.model(all_x) 的特征，shape: [2B, feat_dim]
-                    # all_y: 拼起来后的标签，shape: [2B]
-                    curv_loss = self.curvature_regularization(all_features, all_y)
+                gi_stats = None
+                weight_val = 0.0
 
-                total_loss = loss_cls + loss_kd + getattr(self, "cr_lambda", 0.0) * curv_loss
-                # 原来是：
-                # total_loss = loss_cls + loss_kd
+                if self.cr_mode == "proxy":
+                    if getattr(self, "cr_lambda", 0.0) > 0:
+                        curv_loss = self.curvature_regularization(all_features, all_y)
+                    total_loss = L_original + getattr(self, "cr_lambda", 0.0) * curv_loss
+
+                elif self.cr_mode == "balanced" and pool is not None:
+                    pool.enqueue(all_features, all_y)
+                    if epoch < self.cr_warmup_epoch:
+                        total_loss = L_original
+                    else:
+                        if (iter_index % self.cr_interval) != 0:
+                            total_loss = L_original
+                        else:
+                            feats_pool, labs_pool = pool.get_all(device=torch.device("cpu"))
+                            if feats_pool.size(0) > int(self.cr_pool_sample_max) and int(self.cr_pool_sample_max) > 0:
+                                M = int(self.cr_pool_sample_max)
+                                perm = torch.randperm(
+                                    feats_pool.size(0), device=feats_pool.device
+                                )[:M]
+                                feats_pool = feats_pool[perm]
+                                labs_pool = labs_pool[perm]
+
+                            Gi_cpu = self.curvature_proxy_per_class(
+                                feats_pool, labs_pool,
+                                num_samples_per_class=self.cr_num_samples_per_class,
+                                k_neighbors=self.cr_k_neighbors
+                            )
+                            max_inv_const = None
+                            if Gi_cpu.numel() > 0:
+                                inv_cpu = 1.0 / (Gi_cpu + 1e-8)
+                                max_inv_const = inv_cpu.max().to(self.device)
+
+                            Gi_grad = progressive_DFCL.curvature_proxy_per_class_grad(
+                                all_features, all_y,
+                                num_samples_per_class=self.cr_num_samples_per_class,
+                                k_neighbors=self.cr_k_neighbors
+                            )
+                            if Gi_grad.numel() > 0:
+                                if max_inv_const is None:
+                                    max_inv_const = (1.0 / (Gi_grad.detach() + 1e-8)).max()
+                                curv_loss = curvature_balanced_loss(Gi_grad, max_inv_const=max_inv_const)
+                                total_loss = combine_loss(L_original, curv_loss, epoch, self.cr_tau)
+                                stats_src = Gi_cpu if Gi_cpu.numel() > 0 else Gi_grad.detach()
+                                gi_stats = (stats_src.min().item(), stats_src.mean().item(), stats_src.max().item())
+                                weight_val = log_tau_epoch_weight(epoch, self.cr_tau).item()
+                            else:
+                                total_loss = L_original
+                else:
+                    total_loss = L_original
 
                 optimizer.zero_grad()
                 total_loss.backward()
@@ -524,14 +704,34 @@ class progressive_DFCL(DeepInversionGenBN):
 
                 if iter_index % self.cfg.SHOW_STEP == 0:
                     pbar_str = (
-                        "Approach: {}| | Epoch: {} || Batch:{:>3d}/{}|| lr: {} "
-                        "|| Batch_Loss:{:>5.3f} || CR:{:>5.3f}"
+                        "Approach: {}| | Epoch: {} || Batch:{:>3d}/{}|| lr: {} || Batch_Loss:{:>5.3f}"
                     ).format(
                         self.cfg.trainer_name, epoch, iter_index, iter_num,
                         optimizer.param_groups[0]['lr'],
-                        all_loss.val,
-                        curv_loss.item() if isinstance(curv_loss, torch.Tensor) else curv_loss,
+                        all_loss.val
                     )
+
+                    if self.cr_mode == "proxy":
+                        pbar_str += " || CR:{:>5.3f}".format(
+                            curv_loss.item() if isinstance(curv_loss, torch.Tensor) else float(curv_loss)
+                        )
+                    elif self.cr_mode == "balanced":
+                        pbar_str += " || L_orig:{:>5.3f} || L_curv:{:>5.3f} || weight:{:>5.3f} || pool:{:>4d}".format(
+                            L_original.item() if isinstance(L_original, torch.Tensor) else float(L_original),
+                            curv_loss.item() if isinstance(curv_loss, torch.Tensor) else float(curv_loss),
+                            float(weight_val),
+                            len(pool) if pool is not None else 0
+                        )
+                        if gi_stats is not None:
+                            pbar_str += " || Gi[min/mean/max]:{:>5.3f}/{:>5.3f}/{:>5.3f}".format(
+                                gi_stats[0], gi_stats[1], gi_stats[2]
+                            )
+                        pbar_str += " || samp:{:d}".format(int(self.cr_pool_sample_max))
+                        pbar_str += " || intv:{:d}".format(self.cr_interval)
+                        pbar_str += " || knn:{:d} || nsamp:{:d}".format(
+                            int(self.cr_k_neighbors), int(self.cr_num_samples_per_class)
+                        )
+
                     self.logger.info(pbar_str)
 
 

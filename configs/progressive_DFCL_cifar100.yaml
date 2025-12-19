@@ -63,7 +63,7 @@ extractor:
 generator:
   gen_model_name: "CIFAR_GEN" #生成器网络类型，针对 CIFAR 的生成器。
   generator_iter: 10000 #每次生成阶段的迭代次数。
-  batch_size: 512 #生成时的 batch size。
+  batch_size: 128 #生成时的 batch size。
   deep_inv_params: [1.e-3, 50, 1.0e-3, 1000] # generator_lr生成器学习率（1e-3）, r_feature_weight特征正则项的权重（50）, pr_scale和图片先验相关的权重（1e-3）, content_temp 1e-3 5e1 1e-3 1e3 内容温度（1000），控制 soft 目标 / 能量。
 
 
@@ -92,13 +92,22 @@ model:
 
   #曲率正则！！！！！！！！！！！！！！！！！！
 
-  CR_LAMBDA: 0.01   # 曲率正则
+  CR_LAMBDA: 0.0   # 曲率正则
+  CR_MODE: "proxy" # set to "balanced" to enable curvature-balanced set to "proxy" use conbine-loss no use CR_LAMBDA
+
+  CR_TAU: 2.0
+  CR_WARMUP_EPOCH: 0
+  CR_POOL_SIZE: 0  # 0 => auto = 10 * BATCH_SIZE
+  CR_INTERVAL: 10
+  CR_POOL_SAMPLE_MAX: 2048
+  CR_K_NEIGHBORS: 12        # curvature proxy neighbor count
+  CR_NUM_SAMPLES_PER_CLASS: 32  # samples per class for curvature proxy
 
   #曲率正则！！！！！！！！！！！！！！！！！！
 
 #旧模型训练的通用设置
   TRAIN:
-    BATCH_SIZE: 512
+    BATCH_SIZE: 128
     MAX_EPOCH: 170
     NUM_WORKERS: 32
     SHUFFLE: True #打乱数据集
@@ -115,7 +124,7 @@ model:
 
   finetune:   # 微调阶段设置
     MAX_EPOCH: 60  # 最大训练轮数
-    BATCH_SIZE: 512  # 批大小
+    BATCH_SIZE: 128  # 批大小
     SHUFFLE: True
     NUM_WORKERS: 32  # 多线程加载数据
     # ----- OPTIMIZER -----
@@ -146,7 +155,7 @@ new_model:
 
 #和旧模型一样的训练设置
   TRAIN:
-    BATCH_SIZE: 512
+    BATCH_SIZE: 128
     MAX_EPOCH: 170
     NUM_WORKERS: 32
     SHUFFLE: True

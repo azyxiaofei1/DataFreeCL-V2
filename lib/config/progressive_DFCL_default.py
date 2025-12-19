@@ -18,7 +18,7 @@ _C.INPUT_SIZE = (32, 32)
 _C.COLOR_SPACE = "RGB"
 _C.CPU_MODE = False
 _C.use_best_model = False
-_C.availabel_cudas = "4"
+_C.availabel_cudas = "6"
 _C.use_base_half = False
 _C.checkpoints = "./"
 _C.task1_MODEL = ""
@@ -65,7 +65,15 @@ _C.generator.deep_inv_params = [0.1, 1., 1., 1.]
 
 # ----- model -----'''
 _C.model = CN()
-_C.model.CR_LAMBDA = 0.0  #新加！！！！！！！！！！！！！！！！！！！
+_C.model.CR_LAMBDA = 0.0
+_C.model.CR_MODE = "proxy"          # "proxy" or "balanced"
+_C.model.CR_TAU = 2.0
+_C.model.CR_WARMUP_EPOCH = 0
+_C.model.CR_POOL_SIZE = 0           # 0 表示自动 = 10 * BATCH_SIZE
+_C.model.CR_INTERVAL = 10
+_C.model.CR_POOL_SAMPLE_MAX = 2048
+_C.model.CR_K_NEIGHBORS = 12
+_C.model.CR_NUM_SAMPLES_PER_CLASS = 32
 # cls loss
 
 # logit KD:

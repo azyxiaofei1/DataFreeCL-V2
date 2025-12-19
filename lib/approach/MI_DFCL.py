@@ -8,7 +8,7 @@ from torchvision.transforms import transforms
 from torch.backends import cudnn
 from torch.utils.data import ConcatDataset
 from lib.continual import datafree
-from lib.dataset import TransformedDataset, AVAILABLE_TRANSFORMS, contest_transforms
+from lib.dataset import TransformedDataset, AVAILABLE_TRANSFORMS
 
 
 class MI_DFCL_handler:
@@ -340,4 +340,3 @@ class MI_DFCL_handler:
                 if self.cfg.save_model:
                     self.trainer.save_best_latest_model_data(model_dir, task, val_acc.mean(),
                                                              self.cfg.model.TRAIN.MAX_EPOCH)
-

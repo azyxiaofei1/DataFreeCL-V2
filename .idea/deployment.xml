@@ -13,7 +13,7 @@
       <paths name="liudanze@172.16.170.135:22 password (2)">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/liudanze/project/eccv" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/liudanze/project/eccv-addCR" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

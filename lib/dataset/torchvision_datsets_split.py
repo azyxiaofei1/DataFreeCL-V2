@@ -5,7 +5,7 @@ from torch.utils.data import ConcatDataset
 from torchvision.transforms import transforms
 
 from lib.data_transform.data_transform import AVAILABLE_TRANSFORMS, DATASET_CONFIGS, AVAILABLE_DATASETS
-from lib.dataset import SubDataset, split_dataset, TransformedDataset
+from .dataset_processor import SubDataset, split_dataset, TransformedDataset
 
 
 class Torchvision_Datasets_Split:
